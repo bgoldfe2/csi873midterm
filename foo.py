@@ -204,7 +204,7 @@ def demo():
     run NN demo on the digit recognition dataset from sklearn
     """
     def load_data():
-        data = np.loadtxt('Data/sklearn_digits.csv', delimiter = ',')
+        data = np.loadtxt('datasmall/sklearn_csv.txt', delimiter = ',')
 
         # first ten values are the one hot encoded y (target) values
         y = data[:,0:10]

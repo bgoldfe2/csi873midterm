@@ -11,6 +11,7 @@ Created on Wed Oct 18 18:29:16 2017
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from sig_funcs import sigmoid, sigmoid_prime
 
 def ReadInFiles(path,trnORtst):
     # This reads in all the files from a directory filtering on what the file
@@ -81,7 +82,12 @@ def main():
     dataset2 = ReadInFiles(dpath,'test')
     my_test = ReadInOneList(dataset2,tstNum)
     
-
+###### Neural Net Structure and Behavior Variables ######
+    
+    # array of the layers - in the midterm this is three layers
+    # The layers go in order from left to right - [input,hidden,output]
+    layers = np.array(())
+    
     
     outputs = Output(results,tstNum)
     print(outputs)

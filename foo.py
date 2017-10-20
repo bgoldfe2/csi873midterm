@@ -2,6 +2,8 @@
 """
 Created on Thu Oct 19 22:14:19 2017
 
+https://databoys.github.io/Feedforward/
+
 @author: Bruce
 """
 

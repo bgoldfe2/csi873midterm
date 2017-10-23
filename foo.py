@@ -227,6 +227,9 @@ def demo():
         return out
 
     X = load_data()
+    print(X)
+    
+    asdf
 
     print (X[9]) # make sure the data looks right
 

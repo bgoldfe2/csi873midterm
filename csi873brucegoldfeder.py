@@ -13,6 +13,63 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sig_funcs import sigmoid, sigmoid_prime
 
+
+# **Paramter Defaults**
+input = 784
+hidden = 4
+output = 10
+iterations = 50
+epochs = 2
+learning_rate = 0.5
+momentum = 0.5
+rate_decay = 0.01
+
+
+def initialize(input, hidden, output, iterations, epochs, lrn_rate, momentum, rate_decay):
+    """
+    **Network Parameters**
+    input: number of input units
+    hidden: number of hidden units
+    output: number of output units
+    
+    **Training Parameters**
+    iterations: number of iterations to run
+    epochs: number of full training set run throughs
+    
+    **Hyperparameters**
+    lrn_rate: this is the factor for learning rate
+    momentum: this is the momentum term added to weight update
+    rate_decay: used for annealing the learning rate using a 1/t decay using
+                the mathematical form α=α0/a0+(a0+a0*rate_decay)
+    """
+    # Training Parameters
+    iterations = iterations
+    epochs = epochs
+    
+    # Hyperparameters
+    lrn_rate = lrn_rate
+    momentum = momentum
+    rate_decay = rate_decay
+    
+    # initialize arrays
+    input = input + 1 # add 1 for bias or intercept or threshold node
+    hidden = hidden # ? doesnt this need a threshold node?
+    output = output
+
+    # set up array of 1s for activations
+    ai = [1.0] * input
+    ah = [1.0] * hidden
+    ao = [1.0] * output
+
+    # create random weights between -0.05 and 0.05 as per text on pg. 98
+    wi = np.random.uniform(-0.05, 0.05, size = (input, hidden))
+    wo = np.random.normal(-0.05, 0.05, size = (hidden, output))
+    
+    # temporary arrays to hold the numbers to be updated each iteration
+    ci = np.zeros((input, hidden))
+    co = np.zeros((hidden, output))
+    
+
 def ReadInFiles(path,trnORtst):
     # This reads in all the files from a directory filtering on what the file
     # starts with

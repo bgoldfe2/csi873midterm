@@ -161,7 +161,8 @@ class MLP_NeuralNetwork(object):
         # calculate error
         error = 0.0
         for k in range(len(targets)):
-            error += 0.5 * (targets[k] - self.ao[k]) ** 2
+            error += 0.8 * (targets[k] - self.ao[k]) ** 2
+            print ("the error target is: ",error)
         return error
 
     def test(self, patterns):
@@ -229,8 +230,6 @@ def demo():
     X = load_data()
     print(X)
     
-    asdf
-
     print (X[9]) # make sure the data looks right
 
     NN = MLP_NeuralNetwork(64, 100, 10, iterations = 50, learning_rate = 0.5, momentum = 0.5, rate_decay = 0.01)

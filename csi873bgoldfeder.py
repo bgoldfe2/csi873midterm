@@ -99,7 +99,7 @@ class NeuralNet(object):
     
         # set up arrays for the outputs of the nodes
         self.ai = np.ones(self.input) 
-        print('ai shape ',self.ai.shape)
+        #print('ai shape ',self.ai.shape)
         self.ah = np.ones(self.hidden) 
         self.ao = np.ones(self.output)
         
@@ -176,7 +176,7 @@ class NeuralNet(object):
         # Use the derivative of sigmoid times actual - observed
         for y in range(10):
             delta_k[y] = self.ao[y] * (1-self.ao[y]) * (tkArray[y] - self.ao[y])
-                
+            #print ('tkarray[y] ',tkArray[y],' ao[y] ',self.ao[y],' sub ',tkArray[y] - self.ao[y])    
         #print('deltaKO is: ',delta_k,' shape is ',delta_k.shape)
         
         return delta_k
@@ -245,7 +245,7 @@ class NeuralNet(object):
                 self.co[j][k] = delta
     
         # update the weights connecting input to hidden
-        for i in range(self.input-1):      # add in w0 threshold term
+        for i in range(self.input):      # add in w0 threshold term
             for j in range(self.hidden): # add in w0 threshold term
                 delta = self.lrn_rate * d_kh[j] * self.ai[i] + self.momentum * self.ci[i][j]
                 self.wi[i][j] += delta
@@ -267,10 +267,10 @@ class NeuralNet(object):
 def main():
     
     # Theses are the number counts for training and test data sets
-    trnNum = 1000
+    trnNum = 5000
     tstNum = 890
     
-    dpath = os.getcwd()+'\data3'
+    dpath = os.getcwd()+'\data'
     
     # Read in the Training data first
     dataset = ReadInFiles(dpath,'train')
@@ -283,26 +283,29 @@ def main():
     # This module converts the 0-255 to 0 or 1 binomial
     #my_data[:,1:][my_data[:,1:] > 0] = 1
     
-    HeatMap(my_data[40,1:])
+    #HeatMap(my_data[40,1:])
     
     # Recommended to mix the data to avoid overfitting last trained
     # randomize the rows for better training?
     np.random.shuffle(my_data)
     
     inNum,cols = my_data.shape
-    print('num rows ',inNum)
+    #print('num rows ',inNum)
     
-    myNet = NeuralNet(784, 2, 10, 50, 3,lrn_rate=0.3, momentum = 0.01)
+    myNet = NeuralNet(784, 4, 10, 50, 3,lrn_rate=0.01, momentum = 0.01)
 
     myNet.print_params()
     
     just_img_data = my_data[:,1:]
     answer = my_data[:,0]
+    
+    errorList = []
+    
     # Iterate over the range of total images for training
     for imgNum in range(inNum):
         myNet.feedForward(just_img_data[imgNum,:])
         
-        #print ('answer is ',answer)
+        #print ('answer is ',answer[imgNum])
         
         # Calculate the error term deltaKO for each output unit
         deltaKO = myNet.calcDeltaKO(answer[imgNum])
@@ -313,35 +316,39 @@ def main():
         #print ('delta h is ',deltaKH)
         
         error = myNet.updateWeights(answer[imgNum],deltaKO,deltaKH)
-    
+        errorList.append(error)
+        
+    print('The last image trained was ',answer[-1])    
+        
+        
     # Read in the test data
-    dpath2 = os.getcwd()+'\data4'
+    dpath2 = os.getcwd()+'\data'
     dataset2 = ReadInFiles(dpath2,'test')
     my_test = ReadInOneList(dataset2,tstNum) 
     
-    print(' shape ',my_test.shape)
+    #print(' shape ',my_test.shape)
     
     tstNum,cols = my_test.shape
-    print('num rows ',tstNum)
+    #print('num rows ',tstNum)
     
     # Convert the 0-255 to 0 or 1 values in data
     my_test[:,1:] /= 255.0
     
-    print (my_test)
+    #print (my_test)
     
     just_test_data = my_test[:,1:]
     answerImg = my_test[:,0]
     
-    print('test image size array ',just_test_data.shape)
+    #print('test image size array ',just_test_data.shape)
     accuracyList = []
     
     for imgNum in range(tstNum):
     
         myNet.feedForward(just_test_data[imgNum,:])
-        HeatMap(just_test_data[imgNum])
-        print(myNet.ao)
+        #HeatMap(just_test_data[imgNum])
+        #print(myNet.ao)
         testAnswer = myNet.ao.argmax(axis=0)
-        print('Test Answer is ',testAnswer, ' image answer is ',answerImg[imgNum])
+        #print('Test Answer is ',testAnswer, ' image answer is ',answerImg[imgNum])
         if (testAnswer - answerImg[imgNum] == 0):
             accuracyList.append(1)
         else:
@@ -356,7 +363,9 @@ def main():
     print ('wo ', myNet.wo)
     np.savetxt('output\\wi.csv', myNet.wi, delimiter=',')
     np.savetxt('output\\wo.csv', myNet.wo, delimiter=',')
-    np.savetxt('output\\wo.csv', accuracyList, delimiter=',')    
+    np.savetxt('output\\accuracyList.csv', accuracyList, delimiter=',')
+    np.savetxt('output\\errorList.csv', np.asarray(errorList), delimiter=',')
+    
     
     
 main()

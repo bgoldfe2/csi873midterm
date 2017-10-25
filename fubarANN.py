@@ -172,10 +172,13 @@ class NeuralNet(object):
         tkArray = np.zeros(10)
         tkArray[tk]=1
         
+        #print("Answer is ",answer, " tkArray is ",tkArray)
+        
         delta_k = np.zeros(10)
         
         # Use the derivative of sigmoid times actual - observed
         for y in range(10):
+            #print("difference from output ",tkArray[y] - self.ao[y])
             delta_k[y] = self.ao[y] * (1-self.ao[y]) * (tkArray[y] - self.ao[y])
                 
         #print('deltaKO is: ',delta_k,' shape is ',delta_k.shape)
@@ -215,7 +218,7 @@ class NeuralNet(object):
             delta_h[x] = delta_h1[x] * sum
         
         #print('deltaKH is: ',delta_h,' shape is ',delta_h.shape)    
-       
+        
         return delta_h
     
     def updateWeights(self,answer,d_ko,d_kh):
@@ -267,7 +270,7 @@ def main():
     trnNum = 1000
     tstNum = 890
     
-    dpath = os.getcwd()+'\data3'
+    dpath = os.getcwd()+'\data'
     
     # Read in the Training data first
     dataset = ReadInFiles(dpath,'train')
@@ -311,7 +314,7 @@ def main():
         error = myNet.updateWeights(answer[imgNum],deltaKO,deltaKH)
     
     # Read in the test data
-    dpath2 = os.getcwd()+'\data4'
+    dpath2 = os.getcwd()+'\data3'
     dataset2 = ReadInFiles(dpath2,'test')
     my_test = ReadInOneList(dataset2,tstNum) 
     

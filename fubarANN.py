@@ -203,16 +203,16 @@ class NeuralNet(object):
         
         delta_h = np.zeros(numH)
 
-        for y in range(cols):
+        for x in range(self.hidden):
             sum = 0.0
-            for x in range(rows):
+            for y in range(self.output):
                 # Sum up all of the outputs this hidden node touches
                 delta_h2 = self.wo[x,y] * d_k[y]
                 sum += delta_h2
                 #print(sum)
                        
             # Calculate the derivative times the sum of the wo * d_k
-            delta_h[y] = delta_h1[y] * sum
+            delta_h[x] = delta_h1[x] * sum
         
         #print('deltaKH is: ',delta_h,' shape is ',delta_h.shape)    
        
@@ -237,17 +237,16 @@ class NeuralNet(object):
         # the co array represents the n-1 or prior iteration delta value
         for j in range(self.hidden):
             for k in range(self.output):
-                delta = self.lrn_rate * d_ko[k] * self.ah[j] + (self.momentum * self.co[j][k])
-                #print('delta is ',delta)
-                self.wo[j][k] += delta
-                self.co[j][k] = delta
+                change = d_ko[k] * self.ah[j]
+                self.wo[j][k] += self.lrn_rate * change + self.co[j][k] * self.momentum
+                self.co[j][k] = change
     
         # update the weights connecting input to hidden
-        for i in range(self.input-1):      # add in w0 threshold term
-            for j in range(self.hidden): # add in w0 threshold term
-                delta = self.lrn_rate * d_kh[j] * self.ai[i] + self.momentum * self.ci[i][j]
-                self.wi[i][j] += delta
-                self.ci[i][j] = delta
+        for i in range(self.input-1):
+            for j in range(self.hidden):
+                change = d_kh[j] * self.ai[i]
+                self.wi[i][j] += self.lrn_rate * change + self.ci[i][j] * self.momentum
+                self.ci[i][j] = change
              
     
         # calculate error
@@ -289,7 +288,7 @@ def main():
     inNum,cols = my_data.shape
     print('num rows ',inNum)
     
-    myNet = NeuralNet(784, 20, 10, 50, 3,lrn_rate=0.3, momentum = 0.01)
+    myNet = NeuralNet(784, 3, 10, 50, 3,lrn_rate=0.1, momentum = 0.1)
 
     myNet.print_params()
     

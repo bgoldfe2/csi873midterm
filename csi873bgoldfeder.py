@@ -94,22 +94,23 @@ class NeuralNet(object):
         
         # initialize arrays
         self.input = input + 1 # add 1 for bias node
-        self.hidden = hidden    # This bias node add causes trouble
+        self.hidden = hidden + 1   # This bias node add causes trouble
         self.output = output
     
         # set up arrays for the outputs of the nodes
-        self.ai = np.ones(input) 
-        self.ah = np.ones(hidden) 
-        self.ao = np.ones(output)
+        self.ai = np.ones(self.input) 
+        print('ai shape ',self.ai.shape)
+        self.ah = np.ones(self.hidden) 
+        self.ao = np.ones(self.output)
         
         # create random weights between -0.05 and 0.05 as per text on pg. 98
         # plus one for the bias/threshold unit
-        self.wi = np.random.uniform(-0.05, 0.05, size = (input, hidden))
-        self.wo = np.random.normal(-0.05, 0.05, size = (hidden, output))
+        self.wi = np.random.uniform(-0.05, 0.05, size = (self.input, self.hidden))
+        self.wo = np.random.normal(-0.05, 0.05, size = (self.hidden, self.output))
         
         # temporary arrays to hold the numbers to be updated each iteration
-        self.ci = np.zeros((input, hidden))
-        self.co = np.zeros((hidden, output))
+        self.ci = np.zeros((self.input, self.hidden))
+        self.co = np.zeros((self.hidden, self.output))
 
     def print_params(self):
         
@@ -134,24 +135,22 @@ class NeuralNet(object):
             sigma(net) = 1/(1 + e**-net)
         """
         
-        self.ai = image # remember to account for actual value in 0th index
+        self.ai[0:self.input-1] = image # remember to account for actual value in 0th index
         
-        #self.ai[0] = 1  # set the bias/threshold to always be 1
+        self.ai[self.input-1] = 1  # set the bias/threshold to always be 1
         #print('answer is',answer)
         # hidden activations
         
-        #ah = np.multiply(ai,wi).sum(axis=0)
-        
         for j in range(self.hidden):
             sum = 0.0
-            for i in range(self.input-1):    # removes the bias
+            for i in range(self.input):    # removes the bias
                 prodAW = self.ai[i] * self.wi[i][j]
                 sum += prodAW
             #print ('sum is ',sum)
             self.ah[j] = sigmoid(sum) #what about using tanh here?
             
         # output activations
-        #ah[0] = 1 # set the bias/threshold to always be 1
+        self.ah[self.hidden-1] = 1 # set the bias/threshold to always be 1
         for k in range(self.output):
             sum = 0.0
             for j in range(self.hidden):
@@ -194,7 +193,7 @@ class NeuralNet(object):
         numH = len(self.ah)
         rows,cols = self.wo.shape
         #print ('num rows,cols of wo ',rows, '-',cols,' shape is ',self.wo.shape)
-        
+        #print('shape of d_k ',d_k.shape)
         # Use derivative term for sigmoid applied to the hidden outputs
         delta_h1 = np.zeros(numH)
         for z in range(numH):
@@ -202,20 +201,23 @@ class NeuralNet(object):
         
         
         delta_h = np.zeros(numH)
-
-        for y in range(cols):
+        # corrected - switched rows and columns
+        for y in range(rows):
             sum = 0.0
-            for x in range(rows):
+            #print('y is ',y)
+            for x in range(cols):
+                #print('x is ',x)
                 # Sum up all of the outputs this hidden node touches
-                delta_h2 = self.wo[x,y] * d_k[y]
+                delta_h2 = self.wo[y,x] * d_k[x]
                 sum += delta_h2
                 #print(sum)
                        
             # Calculate the derivative times the sum of the wo * d_k
-            delta_h[y] = delta_h1[y] * sum
+            dh = delta_h1[y] * sum # simulate the threshold I took out
+            #print('delta h is ',dh)
+            delta_h[y] = dh
         
         #print('deltaKH is: ',delta_h,' shape is ',delta_h.shape)    
-       
         return delta_h
     
     def updateWeights(self,answer,d_ko,d_kh):
@@ -247,7 +249,7 @@ class NeuralNet(object):
             for j in range(self.hidden): # add in w0 threshold term
                 delta = self.lrn_rate * d_kh[j] * self.ai[i] + self.momentum * self.ci[i][j]
                 self.wi[i][j] += delta
-                self.ci[i][j] = delta
+                self.ci[i][j] = delta/self.lrn_rate  #w_ij does not contain lrn rate
              
     
         # calculate error
@@ -283,13 +285,14 @@ def main():
     
     HeatMap(my_data[40,1:])
     
+    # Recommended to mix the data to avoid overfitting last trained
     # randomize the rows for better training?
-    #np.random.shuffle(my_data)
+    np.random.shuffle(my_data)
     
     inNum,cols = my_data.shape
     print('num rows ',inNum)
     
-    myNet = NeuralNet(784, 20, 10, 50, 3,lrn_rate=0.3, momentum = 0.01)
+    myNet = NeuralNet(784, 2, 10, 50, 3,lrn_rate=0.3, momentum = 0.01)
 
     myNet.print_params()
     
@@ -351,6 +354,9 @@ def main():
     
     print ('wi ', myNet.wi)
     print ('wo ', myNet.wo)
-        
+    np.savetxt('output\\wi.csv', myNet.wi, delimiter=',')
+    np.savetxt('output\\wo.csv', myNet.wo, delimiter=',')
+    np.savetxt('output\\wo.csv', accuracyList, delimiter=',')    
+    
     
 main()

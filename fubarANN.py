@@ -268,7 +268,7 @@ def main():
     
     # Theses are the number counts for training and test data sets
     trnNum = 1000
-    tstNum = 890
+    tstNum = 500
     
     dpath = os.getcwd()+'\data'
     
@@ -314,7 +314,7 @@ def main():
         error = myNet.updateWeights(answer[imgNum],deltaKO,deltaKH)
     
     # Read in the test data
-    dpath2 = os.getcwd()+'\data3'
+    dpath2 = os.getcwd()+'\data'
     dataset2 = ReadInFiles(dpath2,'test')
     my_test = ReadInOneList(dataset2,tstNum) 
     

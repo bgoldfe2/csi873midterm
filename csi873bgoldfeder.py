@@ -81,7 +81,7 @@ class NeuralNet(object):
         lrn_rate: this is the factor for learning rate
         momentum: this is the momentum term added to weight update
         rate_decay: used for annealing the learning rate using a 1/t decay using
-                    the mathematical form α=α0/a0+(a0+a0*rate_decay)
+                    the mathematical form alpha=alpha0/a0+(a0+a0*rate_decay)
     
         """
         # Training Parameters 
@@ -205,6 +205,7 @@ class NeuralNet(object):
         for y in range(rows):
             sum = 0.0
             #print('y is ',y)
+            # Adjusting this to be "correct" caused the problems
             for x in range(cols):
                 #print('x is ',x)
                 # Sum up all of the outputs this hidden node touches
@@ -267,8 +268,8 @@ class NeuralNet(object):
 def main():
     
     # Theses are the number counts for training and test data sets
-    trnNum = 5000
-    tstNum = 890
+    trnNum = 1000
+    tstNum = 500
     
     dpath = os.getcwd()+'\data'
     
@@ -292,7 +293,7 @@ def main():
     inNum,cols = my_data.shape
     #print('num rows ',inNum)
     
-    myNet = NeuralNet(784, 4, 10, 50, 3,lrn_rate=0.01, momentum = 0.01)
+    myNet = NeuralNet(784, 4, 10, 50, 3,lrn_rate=0.7, momentum = 0.7)
 
     myNet.print_params()
     

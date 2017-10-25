@@ -26,7 +26,16 @@ momentum = 0.5
 rate_decay = 0.01
 
 def sigmoid(z):
-    sig = 1.0 / (1.0 + math.exp(-z))
+    try:
+        if (z < 0):
+            sig = 1.0 - 1.0/(1.0 + math.exp(z))
+        else:
+            sig = 1.0 / (1.0 + math.exp(-z))
+    except OverflowError:
+        if (z > 0):
+            sig = 0.0000001
+        else:
+            sig = 1000000
     return sig
 
 def print_params():
@@ -112,7 +121,7 @@ def feedForward(cnt,inputs,ai,ah,ao,wi,wo,ci,co):
     ai[1:] = inputs[cnt,1:] # remember to account for actual value in 0th index
     answer = inputs[cnt,0]
     ai[0] = 1  # set the bias/threshold to always be 1
-    print('answer is',answer)
+    #print('answer is',answer)
     # hidden activations
     
     #ah = np.multiply(ai,wi).sum(axis=0)
@@ -123,9 +132,8 @@ def feedForward(cnt,inputs,ai,ah,ao,wi,wo,ci,co):
             prodAW = ai[i] * wi[i][j]
             sum += prodAW
         #print ('sum is ',sum)
-        #asdf
         ah[j] = sigmoid(sum) #what about using tanh here?
-
+        
     # output activations
     ah[0] = 1 # set the bias/threshold to always be 1
     for k in range(output):
@@ -147,15 +155,15 @@ def calcDeltaKO(answer,ao):
     #print('tk is ', tk)
     tkArray = np.zeros(10)
     tkArray[tk]=1
-    oneMinAo = np.subtract(1,ao)
-    tkMinAo = np.subtract(tkArray,ao)
-    sigP1 = np.multiply(oneMinAo,tkMinAo)
-    sigP2 = np.multiply(ao,sigP1)
     
-    #print('deltaKO is: ',deltaKO,' shape is ',deltaKO.shape)
+    delta_k = np.zeros(10)
+        
+    for y in range(10):
+        delta_k[y] = ao[y] * (1-ao[y]) * (tkArray[y] - ao[y])
+            
+    #print('deltaKO is: ',delta_k,' shape is ',delta_k.shape)
     
-    
-    return sigP2
+    return delta_k
 
 def calcDeltaKH(o_h,w_kh,d_k):
     """
@@ -165,19 +173,32 @@ def calcDeltaKH(o_h,w_kh,d_k):
     w_kh is the weight of hidden units or the array in main 'wi'
     d_k is the delta_k returned from the function 'calcDeltaKO' for output nodes
     """
+    #print('o_h ',o_h)
+    numH = len(o_h)
     rows,cols = w_kh.shape
     #print ('num rows,cols of d_k ',rows, '-',cols,' shape is ',w_kh.shape)
-    oneMinAo2 = np.subtract(1,o_h)
-    delta_h1 = np.multiply(o_h,oneMinAo2)
-    sum = 0.0
-    for y in range(cols):
-        for x in range(rows):
-            delta_h2 = w_kh[x,y] * d_k[y]
+    delta_h1 = np.zeros(numH)
+    for z in range(numH):
+        delta_h1[z] = o_h[z] * (1 - o_h[z])
+    #print (' delta_h1 shape is ',delta_h1.shape)
+    
+    delta_h = np.zeros(numH)
+    
+    
+    for y in range(rows):
+        sum = 0.0
+        for x in range(cols):
+            #print('w_kh ',w_kh[y,x],' d_k ',d_k[x])
+            delta_h2 = w_kh[y,x] * d_k[x]
             sum += delta_h2
-    delta_h = np.multiply(delta_h1,sum)
+            #print(sum)
+        #print('full sum ',sum)
+        #print('dh1 ',delta_h1[y])
+        delta_h[y] = delta_h1[y] * sum
     
     #print('deltaKH is: ',delta_h,' shape is ',delta_h.shape)    
-    return delta_h
+    actual_nodes_delta_h = delta_h[1:]
+    return actual_nodes_delta_h
 
 def updateWeights(answer,d_ko,d_kh,ai,ah,ao,wi,wo,ci,co,lrn_rate,hidden,output,momentum):
     """
@@ -190,7 +211,7 @@ def updateWeights(answer,d_ko,d_kh,ai,ah,ao,wi,wo,ci,co,lrn_rate,hidden,output,m
     
     # create tk the target/answer array of what output should be
     tk = int(answer)
-    print('tk is ', tk)
+    #print('tk is ', tk)
     tkArray = np.zeros(10)
     tkArray[tk]=1
     
@@ -205,7 +226,7 @@ def updateWeights(answer,d_ko,d_kh,ai,ah,ao,wi,wo,ci,co,lrn_rate,hidden,output,m
 
     # update the weights connecting input to hidden
     for i in range(input+1):      # add in w0 threshold term
-        for j in range(hidden+1): # add in w0 threshold term
+        for j in range(hidden): # add in w0 threshold term
             delta = lrn_rate * d_kh[j] * ai[i] + momentum * ci[i][j]
             wi[i][j] += delta
             ci[i][j] = delta
@@ -217,7 +238,9 @@ def updateWeights(answer,d_ko,d_kh,ai,ah,ao,wi,wo,ci,co,lrn_rate,hidden,output,m
         #print('tk is ',tkArray[k],' ouput is ',ao[k])
         error += (tkArray[k] - ao[k]) ** 2 
         
-    print('the summed square error is ',error)
+    #print('the summed square error is ',error)
+    
+    return answer,d_ko,d_kh,ai,ah,ao,wi,wo,ci,co,lrn_rate,hidden,output,momentum
     
 def ReadInFiles(path,trnORtst):
     # This reads in all the files from a directory filtering on what the file
@@ -226,11 +249,11 @@ def ReadInFiles(path,trnORtst):
     fnames = os.listdir(path)
     for fname in fnames:
         if fname.startswith(trnORtst):
-            print (fname)
+            #print (fname)
             data = np.loadtxt(path + "\\" + fname)
             fullData.append(data)
     numFiles = len (fullData)
-    print(numFiles)
+    #print(numFiles)
    
     return fullData
 
@@ -242,7 +265,7 @@ def ReadInOneList(fullData,maxRows):
     for j in range (numFiles):
         # allows for smaller data set sizes
         numRows = len (fullData[j])
-        print('numrows,maxrows ',numRows,maxRows)
+        #print('numrows,maxrows ',numRows,maxRows)
         if (maxRows < numRows):
             numRows = maxRows
     
@@ -269,10 +292,10 @@ def main():
     global output
     
     # Theses are the number counts for training and test data sets
-    trnNum = 5000
+    trnNum = 1000
     tstNum = 890
     
-    dpath = os.getcwd()+'\data3'
+    dpath = os.getcwd()+'\data'
     
     # Read in the Training data first
     dataset = ReadInFiles(dpath,'train')
@@ -281,6 +304,11 @@ def main():
     
     # Convert the 0-255 to 0 or 1 values in data
     my_data[:,1:] /= 255.0
+    HeatMap(my_data[40,1:])
+    # This module converts the 0-255 to 0 or 1 binomial
+    #my_data[:,1:][my_data[:,1:] > 0] = 1
+    
+    HeatMap(my_data[40,1:])
     
     # randomize the rows for better training?
     np.random.shuffle(my_data)
@@ -288,7 +316,7 @@ def main():
     inNum,cols = my_data.shape
     print('num rows ',inNum)
     
-    initialize(784, 4, 10, its=50, eps = 3,lrn = 0.1, mom = 0.1, rd = 0.01)
+    initialize(784, 4, 10, its=50, eps = 3,lrn = 0.7, mom = 0.7, rd = 0.01)
 
     print_params()
     
@@ -315,7 +343,7 @@ def main():
     for imgNum in range(inNum):
         answer,ai,ah,ao,wi,wo,ci,co = feedForward(imgNum,my_data,ai,ah,ao,wi,wo,ci,co)
         
-        print ('answer is ',answer)
+        #print ('answer is ',answer)
         
         # Calculate the error term deltaKO for each output unit
         deltaKO = calcDeltaKO(answer,ao)
@@ -325,10 +353,10 @@ def main():
         
         #print ('delta h is ',deltaKH)
         
-        updateWeights(answer,deltaKO,deltaKH,ai,ah,ao,wi,wo,ci,co,lrn_rate,hidden,output,momentum)
+        answer,d_ko,d_kh,ai,ah,ao,wi,wo,ci,co,lrn_rate,hidden,output,momentum = updateWeights(answer,deltaKO,deltaKH,ai,ah,ao,wi,wo,ci,co,lrn_rate,hidden,output,momentum)
     
     # Read in the test data
-    dpath2 = os.getcwd()+'\data4'
+    dpath2 = os.getcwd()+'\data3'
     dataset2 = ReadInFiles(dpath2,'test')
     my_test = ReadInOneList(dataset2,tstNum) 
     
@@ -347,7 +375,7 @@ def main():
     
     accuracyList = []
     
-    for imgNum in range(20):
+    for imgNum in range(tstNum):
     
         answer,ai,ah,ao,wi,wo,ci,co = feedForward(imgNum,my_test,ai,ah,ao,wi,wo,ci,co)
         print(ao)

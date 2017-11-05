@@ -13,7 +13,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-def sigmoid(z):
+def sigmoid2(z):
     try:
         if (z < 0):
             sig = 1.0 - 1.0/(1.0 + math.exp(z))
@@ -21,9 +21,13 @@ def sigmoid(z):
             sig = 1.0 / (1.0 + math.exp(-z))
     except OverflowError:
         if (z > 0):
-            sig = 0.0000001
+            sig = 0.01
         else:
-            sig = 1000000
+            sig = 100
+    return sig
+
+def sigmoid(z):
+    sig = 1.0 / (1.0 + math.exp(-z))
     return sig
 
 def ReadInFiles(path,trnORtst):
@@ -93,18 +97,21 @@ class NeuralNet(object):
         self.momentum = momentum
         
         # initialize arrays
-        self.input = input + 1 # add 1 for bias node
-        self.hidden = hidden + 1   # This bias node add causes trouble
+        self.input = input # add 1 for bias node
+        self.hidden = hidden   # This bias node add causes trouble
         self.output = output
     
         # set up arrays for the outputs of the nodes
-        self.ai = np.ones(self.input) 
-        #print('ai shape ',self.ai.shape)
-        self.ah = np.ones(self.hidden) 
+        self.ai = np.ones(self.input)  # removes the threshold input 
+        print('ai shape ',self.ai.shape)
+        self.ah = np.ones(self.hidden) # removes the threshold input
         self.ao = np.ones(self.output)
         
         # create random weights between -0.05 and 0.05 as per text on pg. 98
         # plus one for the bias/threshold unit
+        self.wHidThresh = np.random.uniform(-0.05, 0.05, size = (self.hidden))
+        self.wOutThresh = np.random.uniform(-0.05, 0.05, size = (self.output))
+
         self.wi = np.random.uniform(-0.05, 0.05, size = (self.input, self.hidden))
         self.wo = np.random.normal(-0.05, 0.05, size = (self.hidden, self.output))
         
@@ -132,33 +139,30 @@ class NeuralNet(object):
         layers.  This is then used as the negative exponent value in the sigmoid
         function
             net = Sigma[i=0,n]wi*xi
-            sigma(net) = 1/(1 + e**-net)
+            ah = sigmoid(net) = 1/(1 + e**-net)
         """
+        #self.ai[0] = 1.0  # This is the threshold for every hidden unit
+        self.ai = image # remember to account for actual value in 0th index
         
-        self.ai[0:self.input-1] = image # remember to account for actual value in 0th index
-        
-        self.ai[self.input-1] = 1  # set the bias/threshold to always be 1
-        #print('answer is',answer)
         # hidden activations
         
         for j in range(self.hidden):
-            sum = 0.0
-            for i in range(self.input):    # removes the bias
+            sum = self.wHidThresh[j]
+            for i in range(self.input):    
                 prodAW = self.ai[i] * self.wi[i][j]
                 sum += prodAW
             #print ('sum is ',sum)
             self.ah[j] = sigmoid(sum) #what about using tanh here?
             
         # output activations
-        self.ah[self.hidden-1] = 1 # set the bias/threshold to always be 1
         for k in range(self.output):
-            sum = 0.0
+            sum = self.wOutThresh[k]
             for j in range(self.hidden):
                 prodAWO = self.ah[j] * self.wo[j][k]
                 sum += prodAWO
             self.ao[k] = sigmoid(sum)
     
-
+        
     
     def calcDeltaKO(self,answer):
         """
@@ -168,16 +172,18 @@ class NeuralNet(object):
         
         tk = int(answer)
         #print('tk is ', tk)
-        tkArray = np.zeros(10)
-        tkArray[tk]=1
+        # Make the trained output 0.1 for 0 and 0.9 for 1 as per the text
+        # from the first paragraph on the top of page 115
+        tkArray = np.add(np.zeros(10),0.1)
+        tkArray[tk]= 0.9
         
-        delta_k = np.zeros(10)
+        delta_k = np.zeros(self.output)
         
         # Use the derivative of sigmoid times actual - observed
-        for y in range(10):
+        for y in range(self.output):
             delta_k[y] = self.ao[y] * (1-self.ao[y]) * (tkArray[y] - self.ao[y])
             #print ('tkarray[y] ',tkArray[y],' ao[y] ',self.ao[y],' sub ',tkArray[y] - self.ao[y])    
-        #print('deltaKO is: ',delta_k,' shape is ',delta_k.shape)
+        
         
         return delta_k
     
@@ -189,36 +195,32 @@ class NeuralNet(object):
         w_kh is the weight of hidden units or the array in main 'wi'
         d_k is the delta_k returned from the function 'calcDeltaKO' for output nodes
         """
-        #print('ah ',self.ah)
-        numH = len(self.ah)
-        rows,cols = self.wo.shape
-        #print ('num rows,cols of wo ',rows, '-',cols,' shape is ',self.wo.shape)
-        #print('shape of d_k ',d_k.shape)
+       
         # Use derivative term for sigmoid applied to the hidden outputs
-        delta_h1 = np.zeros(numH)
-        for z in range(numH):
-            delta_h1[z] = self.ah[z] * (1 - self.ah[z])
-        
-        
-        delta_h = np.zeros(numH)
+        delta_h1 = np.zeros(self.hidden) # first part of equation             
+        delta_h = np.zeros(self.hidden)  # output of equation
         # corrected - switched rows and columns
-        for y in range(rows):
-            sum = 0.0
+        for hid in range(self.hidden):
+            sum = 0.0   # question should this be the threshold value?
+            delta_h1[hid] = self.ah[hid] * (1 - self.ah[hid])
             #print('y is ',y)
-            # Adjusting this to be "correct" caused the problems
-            for x in range(cols):
+            # This calculates the second part of equation summing over this hidden
+            # node the product of the weight_kh*delta_k of the output node
+            for out in range(self.output):
                 #print('x is ',x)
-                # Sum up all of the outputs this hidden node touches
-                delta_h2 = self.wo[y,x] * d_k[x]
+                
+                # the product of the weight_kh*delta_k of the output node
+                delta_h2 = self.wo[hid,out] * d_k[out]
+                # Sum up all weight*dk for all output this hidden node touches
                 sum += delta_h2
                 #print(sum)
                        
-            # Calculate the derivative times the sum of the wo * d_k
-            dh = delta_h1[y] * sum # simulate the threshold I took out
+            # Calculate the derivative times the sum of the w_kh * delta_k
+            dh = delta_h1[hid] * sum 
             #print('delta h is ',dh)
-            delta_h[y] = dh
+            delta_h[hid] = dh
         
-        #print('deltaKH is: ',delta_h,' shape is ',delta_h.shape)    
+        #print('delta_h is: ',delta_h,' shape is ',delta_h.shape)    
         return delta_h
     
     def updateWeights(self,answer,d_ko,d_kh):
@@ -271,7 +273,7 @@ def main():
     trnNum = 1000
     tstNum = 500
     
-    dpath = os.getcwd()+'\data'
+    dpath = os.getcwd()+'\data3'
     
     # Read in the Training data first
     dataset = ReadInFiles(dpath,'train')
@@ -310,12 +312,12 @@ def main():
         
         # Calculate the error term deltaKO for each output unit
         deltaKO = myNet.calcDeltaKO(answer[imgNum])
+        print('deltaKO is: ',deltaKO,' shape is ',deltaKO.shape)
         
         # Calculate the error term deltaKH for each hidden unit
         deltaKH = myNet.calcDeltaKH(deltaKO)
-        
-        #print ('delta h is ',deltaKH)
-        
+        print ('delta h is ',deltaKH)
+        asdf
         error = myNet.updateWeights(answer[imgNum],deltaKO,deltaKH)
         errorList.append(error)
         

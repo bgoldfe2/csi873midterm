@@ -70,7 +70,7 @@ def HeatMap(numberIn):
 
 class NeuralNet(object):
     
-    def __init__(self, input, hidden, output, iterations, epochs, lrn_rate, momentum):
+    def __init__(self, input, hidden, output, inNum, epochs, lrn_rate, momentum):
         """
         **Network Parameters**
         input: number of input units
@@ -78,7 +78,7 @@ class NeuralNet(object):
         output: number of output units
         
         **Training Parameters**
-        iterations: number of iterations to run
+        inNum: number of images to run
         epochs: number of full training set run throughs
         
         **Hyperparameters**
@@ -89,7 +89,7 @@ class NeuralNet(object):
     
         """
         # Training Parameters 
-        self.iterations = iterations
+        self.inNum = inNum
         self.epochs = epochs
         
         # Hyperparameters
@@ -118,18 +118,32 @@ class NeuralNet(object):
         # temporary arrays to hold the numbers to be updated each iteration
         self.ci = np.zeros((self.input, self.hidden))
         self.co = np.zeros((self.hidden, self.output))
+        
+        # Error array to capture the output array for each output unit
+        self.outUnitErr = np.zeros((self.inNum,self.output))
 
     def print_params(self):
         
         print ('%-10s ==> %10d' % ('input', self.input))
         print ('%-10s ==> %10d' % ('hidden', self.hidden))
         print ('%-10s ==> %10d' % ('output', self.output))
-        print ('%-10s ==> %10d' % ('iterations', self.iterations))
+        print ('%-10s ==> %10d' % ('number of images', self.inNum))
         print ('%-10s ==> %10d' % ('epochs', self.epochs))
         print ('%-10s ==> %10.2f' % ('learn_rate', self.lrn_rate))
         print ('%-10s ==> %10.2f' % ('momentum', self.momentum))
         
-    def feedForward(self,image):
+    def makeTargetArray(self,answer):
+        tk = int(answer)
+        #print('tk is ', tk)
+        # Make the trained output 0.1 for 0 and 0.9 for 1 as per the text
+        # from the first paragraph on the top of page 115
+        tkArray = np.add(np.zeros(10),0.1)
+        tkArray[tk]= 0.9
+        #print("answer array is ",tkArray)
+        
+        return tkArray
+        
+    def feedForward(self,image,answer):
         
         #print (input,len(inputs))
         """
@@ -162,20 +176,14 @@ class NeuralNet(object):
                 sum += prodAWO
             self.ao[k] = sigmoid(sum)
     
-        
+        #self.calculateError(answer)
     
     def calcDeltaKO(self,answer):
         """
         Calculates the delta_k for each output unit using the formula from the text
         delta_k = ouput_k * (1-ouput_k)*(target_k - output_k)
         """
-        
-        tk = int(answer)
-        #print('tk is ', tk)
-        # Make the trained output 0.1 for 0 and 0.9 for 1 as per the text
-        # from the first paragraph on the top of page 115
-        tkArray = np.add(np.zeros(10),0.1)
-        tkArray[tk]= 0.9
+        tkArray= self.makeTargetArray(answer)
         
         delta_k = np.zeros(self.output)
         
@@ -231,13 +239,6 @@ class NeuralNet(object):
         where
         Delta(w_ji) = n*delta_j*x_ji
         """
-        
-        # create tk the target/answer array of what output should be
-        tk = int(answer)
-        #print('tk is ', tk)
-        tkArray = np.zeros(10)
-        tkArray[tk]=1
-        
         # update the weights connecting hidden to output
         # the co array represents the n-1 or prior iteration delta value
         for j in range(self.hidden):
@@ -250,30 +251,36 @@ class NeuralNet(object):
         # update the weights connecting input to hidden
         for i in range(self.input):      # add in w0 threshold term
             for j in range(self.hidden): # add in w0 threshold term
-                delta = self.lrn_rate * d_kh[j] * self.ai[i] + self.momentum * self.ci[i][j]
+                delta = self.lrn_rate * d_kh[j] * self.ai[i] + (self.momentum * self.ci[i][j])
                 self.wi[i][j] += delta
-                self.ci[i][j] = delta/self.lrn_rate  #w_ij does not contain lrn rate
-             
-    
-        # calculate error
-        error = 0.0
-        for k in range(self.output):
-            #print('tk is ',tkArray[k],' ouput is ',self.ao[k])
-            error += (tkArray[k] - self.ao[k]) ** 2 
+                self.ci[i][j] = delta
+                
+    def calculateError(self,num,answer):
+        
+        tkArray = self.makeTargetArray(answer)
+        for out in range(self.output):
+            self.outUnitErr[num][out] = (tkArray[out] - self.ao[out])**2
             
-        #print('the summed square error is ',error)
+    def plotError(self):
         
-        return error
-        
-
-
+        plt.imshow(self.outUnitErr[:,:])
+        plt.xlabel('iterations')
+        plt.ylabel('error')
+        plt.title('Sum of squared errors for each output unite')
+        plt.grid(True)
+        plt.savefig("test.png")
+        plt.show()
+                 
+    
 def main():
     
     # Theses are the number counts for training and test data sets
-    trnNum = 1000
+    trnNum = 100
     tstNum = 500
     
-    dpath = os.getcwd()+'\data3'
+    epochs = 10
+    
+    dpath = os.getcwd()+'\data'
     
     # Read in the Training data first
     dataset = ReadInFiles(dpath,'train')
@@ -295,37 +302,45 @@ def main():
     inNum,cols = my_data.shape
     #print('num rows ',inNum)
     
-    myNet = NeuralNet(784, 4, 10, 50, 3,lrn_rate=0.7, momentum = 0.7)
+    myNet = NeuralNet(784, 4, 10, inNum, epochs,lrn_rate=0.3, momentum = 0.3)
 
     myNet.print_params()
     
     just_img_data = my_data[:,1:]
     answer = my_data[:,0]
     
-    errorList = []
-    
-    # Iterate over the range of total images for training
-    for imgNum in range(inNum):
-        myNet.feedForward(just_img_data[imgNum,:])
+  
+    for eps in range(myNet.epochs):
+        print("Training epoch ",eps)
+        # Iterate over the range of total images for training
+        for imgNum in range(inNum):
+            myNet.feedForward(just_img_data[imgNum,:],answer[imgNum])
+            
+            #print ('answer is ',answer[imgNum])
+            
+            # Calculate the error term deltaKO for each output unit
+            deltaKO = myNet.calcDeltaKO(answer[imgNum])
+            #print('deltaKO is: ',deltaKO,' shape is ',deltaKO.shape)
+            
+            # Calculate the error term deltaKH for each hidden unit
+            deltaKH = myNet.calcDeltaKH(deltaKO)
+            #print ('delta h is ',deltaKH)
+            
+            # Update the weights for output and hidden weight sets
+            myNet.updateWeights(answer[imgNum],deltaKO,deltaKH)
+            
+            # Calculate the error per image per output unit
+            myNet.calculateError(imgNum,answer[imgNum])
         
-        #print ('answer is ',answer[imgNum])
-        
-        # Calculate the error term deltaKO for each output unit
-        deltaKO = myNet.calcDeltaKO(answer[imgNum])
-        print('deltaKO is: ',deltaKO,' shape is ',deltaKO.shape)
-        
-        # Calculate the error term deltaKH for each hidden unit
-        deltaKH = myNet.calcDeltaKH(deltaKO)
-        print ('delta h is ',deltaKH)
-        asdf
-        error = myNet.updateWeights(answer[imgNum],deltaKO,deltaKH)
-        errorList.append(error)
-        
-    print('The last image trained was ',answer[-1])    
+        errPerEpoch = np.sum(myNet.outUnitErr,dtype='float')
+        print("Total Error for epoch ",eps," is ",errPerEpoch)
+    #np.savetxt('output\\error.csv', myNet.outUnitErr, delimiter=',')
+    #myNet.plotError()   
+    #print('The last image trained was ',answer[-1])    
         
         
     # Read in the test data
-    dpath2 = os.getcwd()+'\data'
+    dpath2 = os.getcwd()+'\data3'
     dataset2 = ReadInFiles(dpath2,'test')
     my_test = ReadInOneList(dataset2,tstNum) 
     
@@ -347,7 +362,7 @@ def main():
     
     for imgNum in range(tstNum):
     
-        myNet.feedForward(just_test_data[imgNum,:])
+        myNet.feedForward(just_test_data[imgNum,:],answerImg[imgNum])
         #HeatMap(just_test_data[imgNum])
         #print(myNet.ao)
         testAnswer = myNet.ao.argmax(axis=0)
@@ -367,7 +382,7 @@ def main():
     np.savetxt('output\\wi.csv', myNet.wi, delimiter=',')
     np.savetxt('output\\wo.csv', myNet.wo, delimiter=',')
     np.savetxt('output\\accuracyList.csv', accuracyList, delimiter=',')
-    np.savetxt('output\\errorList.csv', np.asarray(errorList), delimiter=',')
+
     
     
     

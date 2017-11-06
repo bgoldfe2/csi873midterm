@@ -278,7 +278,7 @@ def main():
     trnNum = 200
     tstNum = 500
     inNodes = 748
-    hidNodes = 4
+    hidNodes = 3
     outNodes = 10
     epochs = 20
     

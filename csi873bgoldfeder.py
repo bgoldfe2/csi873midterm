@@ -70,7 +70,7 @@ def HeatMap(numberIn):
 
 class NeuralNet(object):
     
-    def __init__(self, input, hidden, output, inNum, epochs, lrn_rate, momentum):
+    def __init__(self, input, hidden, output, inNum, tstNum, epochs, lrn_rate, momentum):
         """
         **Network Parameters**
         input: number of input units
@@ -90,6 +90,7 @@ class NeuralNet(object):
         """
         # Training Parameters 
         self.inNum = inNum
+        self.tstNum = tstNum
         self.epochs = epochs
         
         # Hyperparameters
@@ -119,15 +120,19 @@ class NeuralNet(object):
         self.ci = np.zeros((self.input, self.hidden))
         self.co = np.zeros((self.hidden, self.output))
         
-        # Error array to capture the output array for each output unit
+        # Error array to capture the output array for each training output unit
         self.outUnitErr = np.zeros((self.inNum,self.output))
+        
+        # Error array to capture the output array for each training output unit
+        self.outValErr = np.zeros((self.tstNum,self.output))
 
     def print_params(self):
         
         print ('%-10s ==> %10d' % ('input', self.input))
         print ('%-10s ==> %10d' % ('hidden', self.hidden))
         print ('%-10s ==> %10d' % ('output', self.output))
-        print ('%-10s ==> %10d' % ('number of images', self.inNum))
+        print ('%-10s ==> %10d' % ('number of training images', self.inNum))
+        print ('%-10s ==> %10d' % ('number of validation images', self.tstNum))
         print ('%-10s ==> %10d' % ('epochs', self.epochs))
         print ('%-10s ==> %10.2f' % ('learn_rate', self.lrn_rate))
         print ('%-10s ==> %10.2f' % ('momentum', self.momentum))
@@ -261,6 +266,12 @@ class NeuralNet(object):
         for out in range(self.output):
             self.outUnitErr[num][out] = (tkArray[out] - self.ao[out])**2
             
+    def calculateValErr(self,num,answer):
+        
+        tkArray = self.makeTargetArray(answer)
+        for out in range(self.output):
+            self.outValErr[num][out] = (tkArray[out] - self.ao[out])**2
+            
     def plotError(self):
         
         plt.imshow(self.outUnitErr[:,:])
@@ -275,8 +286,8 @@ class NeuralNet(object):
 def main():
     
     # Theses are the number counts for training and test data sets
-    trnNum = 200
-    tstNum = 500
+    trnNum = 100
+    tstNum = 50
     inNodes = 748
     hidNodes = 4
     outNodes = 10
@@ -298,9 +309,8 @@ def main():
     
     inNum,cols = my_data.shape    
     
-    myNet = NeuralNet(inNodes, hidNodes, outNodes, inNum, epochs,lrn_rate=0.3, momentum = 0.3)
 
-    myNet.print_params()
+    
     
     just_img_data = my_data[:,1:]
     answer = my_data[:,0]
@@ -318,6 +328,9 @@ def main():
     
     just_test_data = my_test[:,1:]
     answerImg = my_test[:,0]    
+    
+    myNet = NeuralNet(inNodes, hidNodes, outNodes, inNum, tstNum, epochs,lrn_rate=0.3, momentum = 0.3)
+    myNet.print_params()
     
     # Iterate over the number of epochs of data to run
     for eps in range(myNet.epochs):
@@ -342,21 +355,27 @@ def main():
         
         # Output the training set error
         errPerEpoch = np.sum(myNet.outUnitErr,dtype='float')
-        print("Total Error for epoch ",eps," is ",errPerEpoch)
+        print("Total Training Error for epoch ",eps," is ",errPerEpoch)
 
         accuracyList = []
         
         for imgNum in range(tstNum):
         
             myNet.feedForward(just_test_data[imgNum,:],answerImg[imgNum])
-            #HeatMap(just_test_data[imgNum])
-            #print(myNet.ao)
+           
             testAnswer = myNet.ao.argmax(axis=0)
             #print('Test Answer is ',testAnswer, ' image answer is ',answerImg[imgNum])
             if (testAnswer - answerImg[imgNum] == 0):
                 accuracyList.append(1)
             else:
                 accuracyList.append(0)
+            
+            # Calculate the error for the validation images per output unit
+            myNet.calculateValErr(imgNum,answerImg[imgNum])
+                
+        # Output the Validation set error
+        errValEpoch = np.sum(myNet.outValErr,dtype='float')
+        print("Total Validation Error for epoch ",eps," is ",errValEpoch)
         
         print(accuracyList)
         right = sum(accuracyList)

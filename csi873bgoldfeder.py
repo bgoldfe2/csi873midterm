@@ -8,7 +8,7 @@ Created on Wed Oct 18 18:29:16 2017
             Midterm
 """
 
-import os
+import os,sys
 import math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -61,6 +61,22 @@ def ReadInOneList(fullData,maxRows):
             allData.append(fullData[j][k])
     return np.asarray(allData)
 
+def ReadInValidList(fullData,start,end):
+    # This function combines all of the data into one array for ease of use
+    # It contains a capping ability to configure how many results to use
+    allData = []
+    numFiles = len (fullData)
+    for j in range (numFiles):
+        # allows for smaller data set sizes
+        numRows = len (fullData[j])
+        if numRows < start + end :
+            print('Starting at ' + str(start) + ' there are not ' + str(end) + \
+                  ' images in the data set.  Please retry')
+            sys.exit()
+        for k in range(start,end):
+            allData.append(fullData[j][k])
+    return np.asarray(allData)
+
 
 def HeatMap(numberIn):
     #heat map to show numbers
@@ -70,7 +86,7 @@ def HeatMap(numberIn):
 
 class NeuralNet(object):
     
-    def __init__(self, input, hidden, output, inNum, tstNum, epochs, lrn_rate, momentum):
+    def __init__(self, input, hidden, output, inNum, valNum, tstNum, epochs, lrn_rate, momentum):
         """
         **Network Parameters**
         input: number of input units
@@ -90,6 +106,7 @@ class NeuralNet(object):
         """
         # Training Parameters 
         self.inNum = inNum
+        self.valNum = valNum
         self.tstNum = tstNum
         self.epochs = epochs
         
@@ -124,12 +141,13 @@ class NeuralNet(object):
         self.outUnitErr = np.zeros((self.inNum,self.output))
         
         # Error array to capture the output array for each training output unit
-        self.outValErr = np.zeros((self.tstNum,self.output))
+        self.outValErr = np.zeros((self.valNum,self.output))
         
         # String to append to files to identify experiment parameters
         self.expName = 'in' + str(self.input) + 'hi' + str(self.hidden) + \
                   'out' + str(self.output) + 'lr' + str(self.lrn_rate) + \
                   'mo' + str(self.momentum) + 'trN' + str(self.inNum) + \
+                  'vN' + str(self.valNum) + \
                   'tsN' + str(self.tstNum) + 'ep' + str(self.epochs)
                   
         print("name " + self.expName)
@@ -140,7 +158,8 @@ class NeuralNet(object):
         print ('%-10s ==> %10d' % ('hidden', self.hidden))
         print ('%-10s ==> %10d' % ('output', self.output))
         print ('%-10s ==> %10d' % ('number of training images', self.inNum))
-        print ('%-10s ==> %10d' % ('number of validation images', self.tstNum))
+        print ('%-10s ==> %10d' % ('number of validation images', self.valNum))
+        print ('%-10s ==> %10d' % ('number of test images', self.tstNum))
         print ('%-10s ==> %10d' % ('epochs', self.epochs))
         print ('%-10s ==> %10.2f' % ('learn_rate', self.lrn_rate))
         print ('%-10s ==> %10.2f' % ('momentum', self.momentum))
@@ -317,7 +336,7 @@ class NeuralNet(object):
         
                  
     
-def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,tstNum):
+def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum):
     
     # Read in the Training data first
     dataset = ReadInFiles(dpath,'train')
@@ -333,6 +352,16 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,tstNum):
     just_img_data = my_data[:,1:]
     answer = my_data[:,0]
     
+    # Create the Validation data
+    my_valid = ReadInValidList(dataset,tstNum,tstNum+valNum) 
+    my_valid[:,1:] /= 255.0
+    valNum,valCols = my_valid.shape  
+    print('val num is ',valNum)
+    just_valid_data = my_valid[:,1:]
+    answerValImg = my_valid[:,0]
+    print('array of answerws to follow')
+    print(answerValImg)    
+
     # Read in the test data
     #dpath2 = os.getcwd()+'\data3'
     dataset2 = ReadInFiles(dpath,'test')
@@ -347,7 +376,7 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,tstNum):
     just_test_data = my_test[:,1:]
     answerImg = my_test[:,0]    
     
-    myNet = NeuralNet(inNodes, hidNodes, outNodes, inNum, tstNum, epochs,lrn_rate=0.1, momentum = 0.1)
+    myNet = NeuralNet(inNodes, hidNodes, outNodes, inNum, valNum, tstNum, epochs,lrn_rate=0.1, momentum = 0.1)
     myNet.print_params()
     
     trnErrorList = []
@@ -383,24 +412,24 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,tstNum):
         accuracyList = []
         
         # Run this epochs trained model against the Validation Set of data
-        for imgNum in range(tstNum):
+        for imgNum in range(valNum):
         
-            myNet.feedForward(just_test_data[imgNum,:],answerImg[imgNum])
+            myNet.feedForward(just_valid_data[imgNum,:],answerValImg[imgNum])
            
-            testAnswer = myNet.ao.argmax(axis=0)
-            #print('Test Answer is ',testAnswer, ' image answer is ',answerImg[imgNum])
-            if (testAnswer - answerImg[imgNum] == 0):
+            valAnswer = myNet.ao.argmax(axis=0)
+            #print('Val Answer is ',valAnswer, ' image answer is ',answerValImg[imgNum])
+            if (valAnswer - answerValImg[imgNum] == 0):
                 accuracyList.append(1)
             else:
                 accuracyList.append(0)
             
             # Calculate the error for the validation images per output unit
-            myNet.calculateValErr(imgNum,answerImg[imgNum])
+            myNet.calculateValErr(imgNum,answerValImg[imgNum])
                 
         # Output the Validation set error
         errValEpoch = np.sum(myNet.outValErr,dtype='float')
-        trnValErrList.append(errValEpoch/(tstNum*10))
-        print("Total Validation Error for epoch ",eps," is ",errValEpoch/(tstNum*10))
+        trnValErrList.append(errValEpoch/(valNum*10.0))  # for the ten digits
+        print("Total Validation Error for epoch ",eps," is ",errValEpoch/(valNum*10.0))
        
         # Output the Validation set accuracy
         right = sum(accuracyList)
@@ -435,11 +464,11 @@ if __name__ == "__main__":
 
     parser = OptionParser()
     parser.add_option("-f", "--file", dest="filepath", help="Folder path for data")
-    parser.add_option("-e", "--hid", dest="hidNodes", help="Number of Hidden Nodes")    
-    parser.add_option("-m", "--epochs", dest="epochs", help="Number of Epochs")        
-    parser.add_option("-s", "--train", dest="trnNum", help="Number of Training Images per Number")
+    parser.add_option("-i", "--hid", dest="hidNodes", help="Number of Hidden Nodes")    
+    parser.add_option("-e", "--epochs", dest="epochs", help="Number of Epochs")        
+    parser.add_option("-t", "--train", dest="trnNum", help="Number of Training Images per Number")
     parser.add_option("-v", "--valid", dest="valNum", help="Number of Validation Images per Number")
-    parser.add_option("-t", "--test", dest="tstNum", help="Number of Test Images per Number")
+    parser.add_option("-x", "--test", dest="tstNum", help="Number of Test Images per Number")
         
 
     options, args = parser.parse_args()
@@ -477,5 +506,5 @@ if __name__ == "__main__":
     inNodes = 784
     outNodes = 10
     
-    driver(filepath,inNodes,outNodes,hidNodes,epochs,trnNum,tstNum)
+    driver(filepath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum)
     

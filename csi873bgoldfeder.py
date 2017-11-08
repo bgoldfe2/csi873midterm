@@ -292,7 +292,9 @@ class NeuralNet(object):
         
         plt.title('Training and Validation Set Errors')
         ax.legend()
+        plt.savefig('pics/errPlots.png')
         plt.show()
+        
         
     def plotAccList(self,accList):
         plt.figure()
@@ -303,7 +305,9 @@ class NeuralNet(object):
         
         plt.title('Image Matching to Validation Set Accuracy')
         ax.legend()
+        plt.savefig('pics/accPlot.png')
         plt.show()
+        
         
                  
     
@@ -396,6 +400,9 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,tstNum):
         total = len(accuracyList)
         print('Results of ',right,' out of ',total,' accuracy is ',right/total)
         accList.append(right/total)
+        
+        #TODO for every epoch iteration need to save off weights
+        
     myNet.plotErrList(trnErrorList,trnValErrList)
     myNet.plotAccList(accList)
     
@@ -424,12 +431,12 @@ if __name__ == "__main__":
     if not options.filepath :
         print("Used default of data" )
         filepath = os.getcwd()+'\data'
-    else: filepath = float(options.filepath)
+    else: filepath = options.filepath
      
     if not options.hidNodes :
-        print("Used default hidden nodes of 4" )
-        hidNodes = 4
-    else: hidNodes = float(options.hidNodes)
+        print("Used default hidden nodes of 3" )
+        hidNodes = 3
+    else: hidNodes = int(options.hidNodes)
     
     if not options.epochs :
         print("Used default epochs = 30" )

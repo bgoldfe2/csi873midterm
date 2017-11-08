@@ -125,7 +125,15 @@ class NeuralNet(object):
         
         # Error array to capture the output array for each training output unit
         self.outValErr = np.zeros((self.tstNum,self.output))
-
+        
+        # String to append to files to identify experiment parameters
+        self.expName = 'in' + str(self.input) + 'hi' + str(self.hidden) + \
+                  'out' + str(self.output) + 'lr' + str(self.lrn_rate) + \
+                  'mo' + str(self.momentum) + 'trN' + str(self.inNum) + \
+                  'tsN' + str(self.tstNum) + 'ep' + str(self.epochs)
+                  
+        print("name " + self.expName)
+        
     def print_params(self):
         
         print ('%-10s ==> %10d' % ('input', self.input))
@@ -180,9 +188,7 @@ class NeuralNet(object):
                 prodAWO = self.ah[j] * self.wo[j][k]
                 sum += prodAWO
             self.ao[k] = sigmoid(sum)
-    
-        #self.calculateError(answer)
-    
+                
     def calcDeltaKO(self,answer):
         """
         Calculates the delta_k for each output unit using the formula from the text
@@ -292,7 +298,7 @@ class NeuralNet(object):
         
         plt.title('Training and Validation Set Errors')
         ax.legend()
-        plt.savefig('pics/errPlots.png')
+        plt.savefig('pics/errPlots_' + self.expName + '.png')
         plt.show()
         
         
@@ -305,7 +311,7 @@ class NeuralNet(object):
         
         plt.title('Image Matching to Validation Set Accuracy')
         ax.legend()
-        plt.savefig('pics/accPlot.png')
+        plt.savefig('pics/accPlot_' + self.expName + '.png')
         plt.show()
         
         
@@ -376,6 +382,7 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,tstNum):
 
         accuracyList = []
         
+        # Run this epochs trained model against the Validation Set of data
         for imgNum in range(tstNum):
         
             myNet.feedForward(just_test_data[imgNum,:],answerImg[imgNum])
@@ -395,24 +402,32 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,tstNum):
         trnValErrList.append(errValEpoch/(tstNum*10))
         print("Total Validation Error for epoch ",eps," is ",errValEpoch/(tstNum*10))
        
-        #print(accuracyList)
+        # Output the Validation set accuracy
         right = sum(accuracyList)
         total = len(accuracyList)
         print('Results of ',right,' out of ',total,' accuracy is ',right/total)
         accList.append(right/total)
         
-        #TODO for every epoch iteration need to save off weights
-        
+        # for every epoch iteration need to save off weights
+        weights = [myNet.wHidThresh,myNet.wOutThresh,myNet.wi,myNet.wi]
+        np.savez('output/weightEpoch_' + str(eps) + '_' + myNet.expName + '.npz', \
+                                               wHidThresh=weights[0], \
+                                               wOutThresh=weights[1], \
+                                               wi=weights[2],  \
+                                               wo=weights[3])
+    
+    #TODO Need to run the Test set of data
+    
+    
+    # Plot output and save plot data to file
     myNet.plotErrList(trnErrorList,trnValErrList)
     myNet.plotAccList(accList)
-    
-        
-        #print ('wi ', myNet.wi)
-        #print ('wo ', myNet.wo)
-        #np.savetxt('output\\wi.csv', myNet.wi, delimiter=',')
-        #np.savetxt('output\\wo.csv', myNet.wo, delimiter=',')
-        #np.savetxt('output\\accuracyList.csv', accuracyList, delimiter=',')
 
+    np.savez('output/plotData_' + myNet.expName + '.npz', \
+                             trnErrorList=trnErrorList, \
+                             trnValErrList=trnValErrList, \
+                             accList=accList)
+        
 if __name__ == "__main__":
 
     # Parse commjand line options filename, epsilon, and maximum iterations    
@@ -423,6 +438,7 @@ if __name__ == "__main__":
     parser.add_option("-e", "--hid", dest="hidNodes", help="Number of Hidden Nodes")    
     parser.add_option("-m", "--epochs", dest="epochs", help="Number of Epochs")        
     parser.add_option("-s", "--train", dest="trnNum", help="Number of Training Images per Number")
+    parser.add_option("-v", "--valid", dest="valNum", help="Number of Validation Images per Number")
     parser.add_option("-t", "--test", dest="tstNum", help="Number of Test Images per Number")
         
 
@@ -447,6 +463,11 @@ if __name__ == "__main__":
         print("Used default trnNum = 1000" )
         trnNum = 4500
     else: trnNum = int(options.trnNum)
+    
+    if not options.valNum :
+        print("Used default valNum = 500" )
+        valNum = 500
+    else: valNum = int(options.valNum)
 
     if not options.tstNum :
         print("Used default tstNum = 500" )

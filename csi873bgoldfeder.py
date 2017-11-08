@@ -272,7 +272,7 @@ class NeuralNet(object):
         for out in range(self.output):
             self.outValErr[num][out] = (tkArray[out] - self.ao[out])**2
             
-    def plotError(self):
+    def plotErrorperNum(self):
         
         plt.imshow(self.outUnitErr[:,:])
         plt.xlabel('iterations')
@@ -281,19 +281,33 @@ class NeuralNet(object):
         plt.grid(True)
         plt.savefig("test.png")
         plt.show()
+        
+    def plotErrList(self,errTrn,errTst):
+        plt.figure()
+        plt.ylabel('error')
+        plt.xlabel('epochs')
+        ax = plt.subplot(111)
+        ax.plot(errTrn,label='Training Set Error')
+        ax.plot(errTst,label='Validation Set Error')
+        
+        plt.title('Training and Validation Set Errors')
+        ax.legend()
+        plt.show()
+        
+    def plotAccList(self,accList):
+        plt.figure()
+        plt.ylabel('accuracy')
+        plt.xlabel('epochs')
+        ax = plt.subplot(111)
+        ax.plot(accList,label='Accuracy')
+        
+        plt.title('Image Matching to Validation Set Accuracy')
+        ax.legend()
+        plt.show()
+        
                  
     
-def main():
-    
-    # Theses are the number counts for training and test data sets
-    trnNum = 100
-    tstNum = 50
-    inNodes = 748
-    hidNodes = 4
-    outNodes = 10
-    epochs = 20
-    
-    dpath = os.getcwd()+'\data'
+def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,tstNum):
     
     # Read in the Training data first
     dataset = ReadInFiles(dpath,'train')
@@ -301,23 +315,17 @@ def main():
     
     # Convert the 0-255 to 0 through 1 values in data
     my_data[:,1:] /= 255.0
-    HeatMap(my_data[40,1:])
+    #HeatMap(my_data[40,1:])
     
-    # Recommended to mix the data to avoid overfitting last trained
-    # randomize the rows for better training?
+    # randomize the rows for better training
     np.random.shuffle(my_data)
-    
     inNum,cols = my_data.shape    
-    
-
-    
-    
     just_img_data = my_data[:,1:]
     answer = my_data[:,0]
     
     # Read in the test data
-    dpath2 = os.getcwd()+'\data3'
-    dataset2 = ReadInFiles(dpath2,'test')
+    #dpath2 = os.getcwd()+'\data3'
+    dataset2 = ReadInFiles(dpath,'test')
     my_test = ReadInOneList(dataset2,tstNum) 
     
     tstNum,cols = my_test.shape
@@ -329,8 +337,12 @@ def main():
     just_test_data = my_test[:,1:]
     answerImg = my_test[:,0]    
     
-    myNet = NeuralNet(inNodes, hidNodes, outNodes, inNum, tstNum, epochs,lrn_rate=0.3, momentum = 0.3)
+    myNet = NeuralNet(inNodes, hidNodes, outNodes, inNum, tstNum, epochs,lrn_rate=0.1, momentum = 0.1)
     myNet.print_params()
+    
+    trnErrorList = []
+    trnValErrList = []
+    accList = []
     
     # Iterate over the number of epochs of data to run
     for eps in range(myNet.epochs):
@@ -355,7 +367,8 @@ def main():
         
         # Output the training set error
         errPerEpoch = np.sum(myNet.outUnitErr,dtype='float')
-        print("Total Training Error for epoch ",eps," is ",errPerEpoch)
+        trnErrorList.append(errPerEpoch/(inNum*10.0))
+        print("Total Training Error for epoch ",eps," is ",errPerEpoch/(inNum*10.0))
 
         accuracyList = []
         
@@ -375,20 +388,66 @@ def main():
                 
         # Output the Validation set error
         errValEpoch = np.sum(myNet.outValErr,dtype='float')
-        print("Total Validation Error for epoch ",eps," is ",errValEpoch)
-        
-        print(accuracyList)
+        trnValErrList.append(errValEpoch/(tstNum*10))
+        print("Total Validation Error for epoch ",eps," is ",errValEpoch/(tstNum*10))
+       
+        #print(accuracyList)
         right = sum(accuracyList)
         total = len(accuracyList)
         print('Results of ',right,' out of ',total,' accuracy is ',right/total)
+        accList.append(right/total)
+    myNet.plotErrList(trnErrorList,trnValErrList)
+    myNet.plotAccList(accList)
+    
         
-        print ('wi ', myNet.wi)
-        print ('wo ', myNet.wo)
+        #print ('wi ', myNet.wi)
+        #print ('wo ', myNet.wo)
         #np.savetxt('output\\wi.csv', myNet.wi, delimiter=',')
         #np.savetxt('output\\wo.csv', myNet.wo, delimiter=',')
         #np.savetxt('output\\accuracyList.csv', accuracyList, delimiter=',')
 
+if __name__ == "__main__":
+
+    # Parse commjand line options filename, epsilon, and maximum iterations    
+    from optparse import OptionParser
+
+    parser = OptionParser()
+    parser.add_option("-f", "--file", dest="filepath", help="Folder path for data")
+    parser.add_option("-e", "--hid", dest="hidNodes", help="Number of Hidden Nodes")    
+    parser.add_option("-m", "--epochs", dest="epochs", help="Number of Epochs")        
+    parser.add_option("-s", "--train", dest="trnNum", help="Number of Training Images per Number")
+    parser.add_option("-t", "--test", dest="tstNum", help="Number of Test Images per Number")
+        
+
+    options, args = parser.parse_args()
     
+    if not options.filepath :
+        print("Used default of data" )
+        filepath = os.getcwd()+'\data'
+    else: filepath = float(options.filepath)
+     
+    if not options.hidNodes :
+        print("Used default hidden nodes of 4" )
+        hidNodes = 4
+    else: hidNodes = float(options.hidNodes)
     
+    if not options.epochs :
+        print("Used default epochs = 30" )
+        epochs = 30
+    else: epochs = int(options.epochs)
     
-main()
+    if not options.trnNum :
+        print("Used default trnNum = 1000" )
+        trnNum = 4500
+    else: trnNum = int(options.trnNum)
+
+    if not options.tstNum :
+        print("Used default tstNum = 500" )
+        tstNum = 890
+    else: tstNum = int(options.tstNum)    
+    
+    inNodes = 784
+    outNodes = 10
+    
+    driver(filepath,inNodes,outNodes,hidNodes,epochs,trnNum,tstNum)
+    

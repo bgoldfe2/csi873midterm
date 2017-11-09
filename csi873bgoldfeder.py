@@ -142,6 +142,9 @@ class NeuralNet(object):
         
         # Error array to capture the output array for each training output unit
         self.outValErr = np.zeros((self.valNum,self.output))
+
+        # Error array to capture the output array for each training output unit
+        self.outTstErr = np.zeros((self.tstNum,self.output))
         
         # String to append to files to identify experiment parameters
         self.expName = 'in' + str(self.input) + 'hi' + str(self.hidden) + \
@@ -285,6 +288,8 @@ class NeuralNet(object):
                 self.wi[i][j] += delta
                 self.ci[i][j] = delta
                 
+    # to save time and complexity these are 3 different functions
+    #TODO refactor to one function
     def calculateError(self,num,answer):
         
         tkArray = self.makeTargetArray(answer)
@@ -296,6 +301,12 @@ class NeuralNet(object):
         tkArray = self.makeTargetArray(answer)
         for out in range(self.output):
             self.outValErr[num][out] = (tkArray[out] - self.ao[out])**2
+            
+    def calculateTstErr(self,num,answer):
+        
+        tkArray = self.makeTargetArray(answer)
+        for out in range(self.output):
+            self.outTstErr[num][out] = (tkArray[out] - self.ao[out])**2
             
     def plotErrorperNum(self):
         
@@ -381,6 +392,7 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum):
     
     trnErrorList = []
     trnValErrList = []
+    tstErrList = []
     accList = []
     
     # Iterate over the number of epochs of data to run
@@ -445,7 +457,35 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum):
                                                wi=weights[2],  \
                                                wo=weights[3])
     
-    #TODO Need to run the Test set of data
+    # Need to run the Test set of data
+    # First find the optimal set of weights from Validation
+    
+    
+    # Then run the test images through using the optimal weights
+    for imgNum in range(tstNum):
+    
+        myNet.feedForward(just_test_data[imgNum,:],answerValImg[imgNum])
+       
+        tstAnswer = myNet.ao.argmax(axis=0)
+        #print('Val Answer is ',valAnswer, ' image answer is ',answerValImg[imgNum])
+        if (tstAnswer - answerImg[imgNum] == 0):
+            accuracyList.append(1)
+        else:
+            accuracyList.append(0)
+        
+        # Calculate the error for the validation images per output unit
+        myNet.calculateTstErr(imgNum,answerImg[imgNum])
+            
+    # Output the Test set error
+    errTstEpoch = np.sum(myNet.outTstErr,dtype='float')
+    tstErrList.append(errTstEpoch/(tstNum*10.0))  # for the ten digits
+    print("Final Testing Error is ",errTstEpoch/(tstNum*10.0))
+   
+    # Output the Validation set accuracy
+    right = sum(accuracyList)
+    total = len(accuracyList)
+    testAccuracy = right/total
+    print('Final Test results of ',right,' out of ',total,' accuracy is ',testAccuracy)
     
     
     # Plot output and save plot data to file
@@ -455,7 +495,8 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum):
     np.savez('output/plotData_' + myNet.expName + '.npz', \
                              trnErrorList=trnErrorList, \
                              trnValErrList=trnValErrList, \
-                             accList=accList)
+                             accList=accList, \
+                             testAccuracy=testAccuracy)
         
 if __name__ == "__main__":
 

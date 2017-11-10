@@ -347,7 +347,7 @@ class NeuralNet(object):
         
                  
     
-def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum):
+def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum,lrnRate,momentum):
     
     # Read in the Training data first
     dataset = ReadInFiles(dpath,'train')
@@ -387,7 +387,7 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum):
     just_test_data = my_test[:,1:]
     answerImg = my_test[:,0]    
     
-    myNet = NeuralNet(inNodes, hidNodes, outNodes, inNum, valNum, tstNum, epochs,lrn_rate=0.1, momentum = 0.1)
+    myNet = NeuralNet(inNodes, hidNodes, outNodes, inNum, valNum, tstNum, epochs,lrnRate, momentum)
     myNet.print_params()
     
     trnErrorList = []
@@ -525,6 +525,8 @@ if __name__ == "__main__":
     parser.add_option("-t", "--train", dest="trnNum", help="Number of Training Images per Number")
     parser.add_option("-v", "--valid", dest="valNum", help="Number of Validation Images per Number")
     parser.add_option("-x", "--test", dest="tstNum", help="Number of Test Images per Number")
+    parser.add_option("-l", "--learn", dest="lrnRate", help="Number of Test Images per Number")
+    parser.add_option("-m", "--momentum", dest="momentum", help="Number of Test Images per Number")
         
 
     options, args = parser.parse_args()
@@ -557,10 +559,20 @@ if __name__ == "__main__":
     if not options.tstNum :
         print("Used default tstNum = 500" )
         tstNum = 890
-    else: tstNum = int(options.tstNum)    
+    else: tstNum = int(options.tstNum) 
+    
+    if not options.lrnRate :
+        print("Used default lrnRate = 0.5" )
+        lrnRate = 0.5
+    else: lrnRate = float(options.lrnRate) 
+    
+    if not options.momentum :
+        print("Used default momentum = 0.5" )
+        momentum = 0.5
+    else: momentum = float(options.momentum) 
     
     inNodes = 784
     outNodes = 10
     
-    driver(filepath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum)
+    driver(filepath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum,lrnRate,momentum)
     

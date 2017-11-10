@@ -121,7 +121,7 @@ class NeuralNet(object):
     
         # set up arrays for the outputs of the nodes
         self.ai = np.ones(self.input)  # removes the threshold input 
-        print('ai shape ',self.ai.shape)
+        #print('ai shape ',self.ai.shape)
         self.ah = np.ones(self.hidden) # removes the threshold input
         self.ao = np.ones(self.output)
         
@@ -367,11 +367,11 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum):
     my_valid = ReadInValidList(dataset,tstNum,tstNum+valNum) 
     my_valid[:,1:] /= 255.0
     valNum,valCols = my_valid.shape  
-    print('val num is ',valNum)
+    #print('val num is ',valNum)
     just_valid_data = my_valid[:,1:]
     answerValImg = my_valid[:,0]
-    print('array of answerws to follow')
-    print(answerValImg)    
+    #print('array of answerws to follow')
+    #print(answerValImg)    
 
     # Read in the test data
     #dpath2 = os.getcwd()+'\data3'
@@ -476,6 +476,7 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum):
     #      'shape of wo ',myNet.wo.shape)
     
     # Then run the test images through using the optimal weights
+    tstAccList = []
     for imgNum in range(tstNum):
     
         myNet.feedForward(just_test_data[imgNum,:],answerImg[imgNum])
@@ -483,12 +484,12 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum):
         tstAnswer = myNet.ao.argmax(axis=0)
         #print('Val Answer is ',valAnswer, ' image answer is ',answerValImg[imgNum])
         if (tstAnswer - answerImg[imgNum] == 0):
-            accuracyList.append(1)
+            tstAccList.append(1)
         else:
-            accuracyList.append(0)
+            tstAccList.append(0)
         
         # Calculate the error for the validation images per output unit
-        myNet.calculateTstErr(imgNum,answerImg[imgNum])
+        #myNet.calculateTstErr(imgNum,answerImg[imgNum])
             
     # Output the Test set error
     errTstEpoch = np.sum(myNet.outTstErr,dtype='float')
@@ -496,8 +497,8 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum):
     print("Final Testing Error is ",errTstEpoch/(tstNum*10.0))
    
     # Output the Validation set accuracy
-    right = sum(accuracyList)
-    total = len(accuracyList)
+    right = sum(tstAccList)
+    total = len(tstAccList)
     testAccuracy = right/total
     print('Final Test results of ',right,' out of ',total,' accuracy is ',testAccuracy)
     

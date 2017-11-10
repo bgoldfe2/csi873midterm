@@ -450,7 +450,7 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum):
         accList.append(right/total)
         
         # for every epoch iteration need to save off weights
-        weights = [myNet.wHidThresh,myNet.wOutThresh,myNet.wi,myNet.wi]
+        weights = [myNet.wHidThresh,myNet.wOutThresh,myNet.wi,myNet.wo]
         np.savez('output/weightEpoch_' + str(eps) + '_' + myNet.expName + '.npz', \
                                                wHidThresh=weights[0], \
                                                wOutThresh=weights[1], \
@@ -459,12 +459,26 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum):
     
     # Need to run the Test set of data
     # First find the optimal set of weights from Validation
-    
+    # Find the epoch with the lowest validation set error and then
+    # set the weights in the ANN to those weights for testing
+    npValErr = np.asarray(trnValErrList)
+    minEpoch = npValErr.argmin(axis=0)
+    print("The epoch with lowest validation error is ",str(minEpoch))
+    optWt = np.load('output/weightEpoch_' + str(minEpoch) + '_' + myNet.expName + '.npz')
+    myNet.wHidThresh = optWt['wHidThresh']
+    myNet.wOutThresh = optWt['wOutThresh']
+    myNet.wi = optWt['wi']
+    myNet.wo = optWt['wo']
+    optWt.close()    
+    #print('Weight arrays wHidThresh', myNet.wHidThresh,'\n' \
+    #      'wOutThresh ',myNet.wOutThresh, '\n' \
+    #      'shape of wi ',myNet.wi.shape, '\n' \
+    #      'shape of wo ',myNet.wo.shape)
     
     # Then run the test images through using the optimal weights
     for imgNum in range(tstNum):
     
-        myNet.feedForward(just_test_data[imgNum,:],answerValImg[imgNum])
+        myNet.feedForward(just_test_data[imgNum,:],answerImg[imgNum])
        
         tstAnswer = myNet.ao.argmax(axis=0)
         #print('Val Answer is ',valAnswer, ' image answer is ',answerValImg[imgNum])

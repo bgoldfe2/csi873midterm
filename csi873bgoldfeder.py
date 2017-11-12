@@ -86,7 +86,7 @@ def HeatMap(numberIn):
 
 class NeuralNet(object):
     
-    def __init__(self, input, hidden, output, inNum, valNum, tstNum, epochs, lrn_rate, momentum):
+    def __init__(self, input, hidden, output, inNum, valNum, tstNum, epochs, lrn_rate, momentum,stop):
         """
         **Network Parameters**
         input: number of input units
@@ -153,6 +153,10 @@ class NeuralNet(object):
                   'vN' + str(self.valNum) + \
                   'tsN' + str(self.tstNum) + 'ep' + str(self.epochs)
                   
+        # Set the stopping criteria which is the percent drop in Validation
+        # from the current iteration to the previous
+        self.stop = stop 
+                  
         print("name " + self.expName)
         
     def print_params(self):
@@ -166,6 +170,7 @@ class NeuralNet(object):
         print ('%-10s ==> %10d' % ('epochs', self.epochs))
         print ('%-10s ==> %10.2f' % ('learn_rate', self.lrn_rate))
         print ('%-10s ==> %10.2f' % ('momentum', self.momentum))
+        print ('%-10s ==> %10.5f' % ('stopping criteria', self.stop))
         
     def makeTargetArray(self,answer):
         tk = int(answer)
@@ -347,7 +352,7 @@ class NeuralNet(object):
         
                  
     
-def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum,lrnRate,momentum):
+def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum,lrnRate,momentum,stop):
     
     # Read in the Training data first
     dataset = ReadInFiles(dpath,'train')
@@ -387,7 +392,7 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum,lrnRate,m
     just_test_data = my_test[:,1:]
     answerImg = my_test[:,0]    
     
-    myNet = NeuralNet(inNodes, hidNodes, outNodes, inNum, valNum, tstNum, epochs,lrnRate, momentum)
+    myNet = NeuralNet(inNodes, hidNodes, outNodes, inNum, valNum, tstNum, epochs,lrnRate, momentum,stop)
     myNet.print_params()
     
     trnErrorList = []
@@ -442,7 +447,7 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum,lrnRate,m
         errValEpoch = np.sum(myNet.outValErr,dtype='float')
         trnValErrList.append(errValEpoch/(valNum*10.0))  # for the ten digits
         print("Total Validation Error for epoch ",eps," is ",errValEpoch/(valNum*10.0))
-       
+        
         # Output the Validation set accuracy
         right = sum(accuracyList)
         total = len(accuracyList)
@@ -456,7 +461,22 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum,lrnRate,m
                                                wOutThresh=weights[1], \
                                                wi=weights[2],  \
                                                wo=weights[3])
-    
+        
+        # Check for the stopping criteria on Validation Test Set
+        criteriaMet = False
+        if len(trnValErrList) > 1:
+            currErr = trnValErrList[-1]
+            prevErr = trnValErrList[-2]
+            diffErrRatio = (prevErr - currErr) / prevErr
+            print("{0:.4f}%".format(100.0 * diffErrRatio))
+            if (diffErrRatio < myNet.stop):
+                print("Stopping criteria of ",str(stop)," is more than ",str(diffErrRatio))
+                criteriaMet = True
+                
+        if criteriaMet:
+            break
+        
+        
     # Need to run the Test set of data
     # First find the optimal set of weights from Validation
     # Find the epoch with the lowest validation set error and then
@@ -527,6 +547,7 @@ if __name__ == "__main__":
     parser.add_option("-x", "--test", dest="tstNum", help="Number of Test Images per Number")
     parser.add_option("-l", "--learn", dest="lrnRate", help="Number of Test Images per Number")
     parser.add_option("-m", "--momentum", dest="momentum", help="Number of Test Images per Number")
+    parser.add_option("-s", "--stop", dest="stop", help="Validation Stopping Criteria Percentage")
         
 
     options, args = parser.parse_args()
@@ -571,8 +592,13 @@ if __name__ == "__main__":
         momentum = 0.5
     else: momentum = float(options.momentum) 
     
+    if not options.stop :
+        print("Used default stop = 0.05%" )
+        stop = 0.0005
+    else: stop = float(options.stop) 
+    
     inNodes = 784
     outNodes = 10
     
-    driver(filepath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum,lrnRate,momentum)
+    driver(filepath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum,lrnRate,momentum,stop)
     

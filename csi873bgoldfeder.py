@@ -336,7 +336,6 @@ class NeuralNet(object):
         plt.savefig('pics/errPlots_' + self.expName + '.png')
         plt.show()
         
-        
     def plotAccList(self,accList):
         plt.figure()
         plt.ylabel('accuracy')
@@ -348,9 +347,6 @@ class NeuralNet(object):
         ax.legend()
         plt.savefig('pics/accPlot_' + self.expName + '.png')
         plt.show()
-        
-        
-                 
     
 def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum,lrnRate,momentum,stop):
     
@@ -474,13 +470,15 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum,lrnRate,m
                 criteriaMet = True
                 
         if criteriaMet:
-            break
-        
+            break        
         
     # Need to run the Test set of data
     # First find the optimal set of weights from Validation
     # Find the epoch with the lowest validation set error and then
     # set the weights in the ANN to those weights for testing
+    # This should only not be the last set if there are very large stopping
+    # criteria which would make the error start to go back up due to 
+    # overtraining for example
     npValErr = np.asarray(trnValErrList)
     minEpoch = npValErr.argmin(axis=0)
     print("The epoch with lowest validation error is ",str(minEpoch))
@@ -508,9 +506,6 @@ def driver(dpath,inNodes,outNodes,hidNodes,epochs,trnNum,valNum,tstNum,lrnRate,m
         else:
             tstAccList.append(0)
         
-        # Calculate the error for the validation images per output unit
-        #myNet.calculateTstErr(imgNum,answerImg[imgNum])
-            
     # Output the Test set error
     errTstEpoch = np.sum(myNet.outTstErr,dtype='float')
     tstErrList.append(errTstEpoch/(tstNum*10.0))  # for the ten digits
